@@ -1,0 +1,109 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Repair Entity Validation
+    function isValidRepair(data) {
+      return data.userId == request.auth.uid
+        && data.date is timestamp
+        && data.description is string && data.description.size() <= 2000
+        && data.partNumbers is list
+        && (data.partNumbers.size() == 0 || data.partNumbers[0] is string)
+        && data.partNumbers.size() <= 50
+        && data.repairTime is number && data.repairTime >= 0
+        && data.tools is list
+        && (data.tools.size() == 0 || data.tools[0] is string)
+        && data.tools.size() <= 50
+        && (data.vehicleInfo == null || (data.vehicleInfo is string && data.vehicleInfo.size() <= 500))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Vehicle Entity Validation
+    function isValidVehicle(data) {
+      return data.userId == request.auth.uid
+        && data.make is string && data.make.size() <= 100
+        && data.model is string && data.model.size() <= 100
+        && (data.subModel == null || (data.subModel is string && data.subModel.size() <= 100))
+        && data.year is number && data.year >= 1886 && data.year <= 2100
+        && (data.nickname == null || (data.nickname is string && data.nickname.size() <= 100))
+        && (data.vin == null || (data.vin is string && data.vin.size() <= 100))
+        && data.createdAt is timestamp;
+    }
+
+    // Diagnostic Entity Validation
+    function isValidDiagnostic(data) {
+      return data.userId == request.auth.uid
+        && data.dateDiscovered is timestamp
+        && data.codes is list && data.codes.size() >= 1 && data.codes.size() <= 50
+        && data.codes[0] is string
+        && (data.notes == null || (data.notes is string && data.notes.size() <= 5000))
+        && (data.odometer == null || (data.odometer is number && data.odometer >= 0))
+        && (data.vehicleId == null || isValidId(data.vehicleId))
+        && data.createdAt is timestamp;
+    }
+
+    match /vehicles/{vehicleId} {
+      allow get: if isOwner(existing().userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidVehicle(incoming()) && incoming().createdAt == request.time;
+      allow update: if isOwner(existing().userId) && isValidVehicle(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isOwner(existing().userId);
+    }
+
+    match /diagnostics/{diagnosticId} {
+      allow get: if isOwner(existing().userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidDiagnostic(incoming()) && incoming().createdAt == request.time;
+      allow update: if isOwner(existing().userId) && isValidDiagnostic(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isOwner(existing().userId);
+    }
+
+    match /repairs/{repairId} {
+      allow get: if isOwner(existing().userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      allow create: if isSignedIn() 
+        && isValidRepair(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+        
+      allow update: if isOwner(existing().userId)
+        && isValidRepair(incoming())
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Action: Edit repair details
+          incoming().diff(existing()).affectedKeys().hasOnly(['description', 'date', 'partNumbers', 'repairTime', 'tools', 'vehicleInfo', 'updatedAt'])
+        );
+        
+      allow delete: if isOwner(existing().userId);
+    }
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "entities": {
+    "Vehicle": {
+      "title": "Vehicle",
+      "description": "A vehicle owned by the user or family.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "make": { "type": "string" },
+        "model": { "type": "string" },
+        "subModel": { "type": "string" },
+        "year": { "type": "number" },
+        "nickname": { "type": "string" },
+        "vin": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "make", "model", "year", "createdAt"]
+    },
+    "Repair": {
+      "title": "Repair",
+      "description": "A record of a vehicle repair or maintenance task.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "vehicleId": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "description": { "type": "string" },
+        "partNumbers": { "type": "array", "items": { "type": "string" } },
+        "repairTime": { "type": "number" },
+        "tools": { "type": "array", "items": { "type": "string" } },
+        "odometer": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "date", "description", "createdAt", "updatedAt"]
+    },
+    "Diagnostic": {
+      "title": "Diagnostic",
+      "description": "OBDII scan codes and diagnostic records.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "vehicleId": { "type": "string" },
+        "dateDiscovered": { "type": "string", "format": "date-time" },
+        "codes": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" },
+        "odometer": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "dateDiscovered", "codes", "createdAt"]
+    }
+  },
+  "firestore": {
+    "vehicles/{vehicleId}": {
+      "schema": "Vehicle",
+      "description": "User's vehicles."
+    },
+    "repairs/{repairId}": {
+      "schema": "Repair",
+      "description": "Repair logs."
+    },
+    "diagnostics/{diagnosticId}": {
+      "schema": "Diagnostic",
+      "description": "OBDII scan logs."
+    }
+  }
+}

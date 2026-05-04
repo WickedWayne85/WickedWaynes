@@ -1,0 +1,6 @@
+{
+  "name": "Repair Tracker Pocket Companion",
+  "description": "Log and track personal and family vehicle repairs, part numbers, tools, and OBDII diagnostics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
